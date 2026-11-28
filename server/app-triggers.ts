@@ -38,6 +38,20 @@ const RECONCILE_IDLE_MS = 60 * 60_000;
 const NAME_MAX = 80;
 const PROMPT_MAX = 20_000;
 
+class RunStoreFailure extends Error {
+  readonly original: unknown;
+
+  constructor(original: unknown) {
+    super(original instanceof Error ? original.message : String(original));
+    this.original = original;
+  }
+}
+
+function runStore<T>(operation: () => T): T {
+  try { return operation(); }
+  catch (error) { throw new RunStoreFailure(error); }
+}
+
 export class AppTriggerError extends Error {
   readonly status: number;
 
@@ -467,6 +481,7 @@ export class AppTriggerManager {
         try {
           this.handle(event);
         } catch (error) {
+          if (error instanceof RunStoreFailure) throw error.original;
           const tries = (this.failures.get(event.id) ?? 0) + 1;
           this.failures.set(event.id, tries);
           if (tries < POISON_TRIES) throw error;
@@ -509,24 +524,25 @@ export class AppTriggerManager {
         this.record(trigger, event, "filtered", { reason: "did not match the filter" });
         continue;
       }
-      const seen = this.options.runs.receipt(trigger.id, event.id);
+      const seen = runStore(() => this.options.runs.receipt(trigger.id, event.id));
       if (seen) {
         this.record(trigger, event, "duplicate", { runId: seen.id });
         continue;
       }
       const block = eventBlock(trigger, { id: event.id, receivedAt: event.receivedAt, test: event.kind === "test", data });
-      const joined = this.options.runs.merge(trigger.id, event.id, (prompt) => mergeEventBlock(prompt, block));
+      const joined = runStore(() => this.options.runs.merge(trigger.id, event.id, (prompt) => mergeEventBlock(prompt, block)));
       let runId = joined?.id;
       if (!runId) {
-        if (this.options.runs.pending(trigger.id) >= DEFAULT_MAX_PENDING_RUNS) {
+        if (runStore(() => this.options.runs.pending(trigger.id)) >= DEFAULT_MAX_PENDING_RUNS) {
           this.countSkipped(trigger, "tooMany");
           this.record(trigger, event, "skipped", { reason: `it already had ${DEFAULT_MAX_PENDING_RUNS} runs waiting` });
           continue;
         }
-        runId = this.options.runs.enqueue({
-          webhookId: trigger.id, webhookName: trigger.name, prompt: eventPrompt(trigger.prompt, block), botId: trigger.botId,
+        const prompt = eventPrompt(trigger.prompt, block);
+        runId = runStore(() => this.options.runs.enqueue({
+          webhookId: trigger.id, webhookName: trigger.name, prompt, botId: trigger.botId,
           runOn: trigger.runOn, deliveryId: event.id, receivedAt: event.receivedAt, eventSource: "app",
-        }).id;
+        })).id;
       }
       trigger.received += 1;
       trigger.lastEventAt = event.receivedAt;

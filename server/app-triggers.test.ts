@@ -20,6 +20,7 @@ let gmail = "";
 let routines: RoutineManager;
 let connected: Record<string, { connected: boolean; accounts: Array<{ id: string; alias?: string; status: string }> }>;
 let failNextEnqueue: "before-save" | "after-save" | null = null;
+let failedEnqueues = 0;
 
 beforeEach(async () => {
   vi.spyOn(console, "log").mockImplementation(() => {});
@@ -32,6 +33,7 @@ beforeEach(async () => {
   // Busy, so runs stay queued: what a burst or a catch-up meets while the bot works on the first one.
   routines = new RoutineManager({ file: join(dir, "routines.json"), botState: () => "busy", createTask: () => ({ threadId: "thread-run" }), startTurn: async () => {} });
   failNextEnqueue = null;
+  failedEnqueues = 0;
 });
 
 afterEach(async () => {
@@ -50,6 +52,7 @@ function manager(overrides: Partial<AppTriggerManagerOptions> = {}) {
     botState: () => "ready",
     runs: {
       enqueue: (input) => {
+        if (failedEnqueues > 0) { failedEnqueues--; throw new Error("temporary run store failure"); }
         const failure = failNextEnqueue;
         failNextEnqueue = null;
         if (failure === "before-save") throw new Error("disk full");
@@ -107,6 +110,24 @@ describe("AppTriggerManager", () => {
     expect(broker.harness.d1.rows("SELECT * FROM events WHERE acked_at IS NULL")).toHaveLength(1);
     await triggers.pollOnce(undefined, 0);
     expect(broker.harness.d1.rows("SELECT * FROM events WHERE acked_at IS NULL")).toHaveLength(0);
+  });
+
+  it("keeps an event pending through five temporary run-store failures, then starts it once", async () => {
+    const triggers = manager();
+    const trigger = await gmailTrigger(triggers);
+    expect((await broker.deliver(trigger.remote.triggerId!, { subject: "Synthetic order", sender: "fixture@example.test" }, "temporary_failure")).status).toBe(200);
+    failedEnqueues = 5;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      await expect(triggers.pollOnce(undefined, 0)).rejects.toThrow("temporary run store failure");
+      expect(runsOf(trigger.id)).toHaveLength(0);
+      expect(triggers.attempts()).toEqual([]);
+    }
+    expect((await triggers.pollOnce(undefined, 0))).toBe(1);
+    expect(runsOf(trigger.id)).toHaveLength(1);
+    expect(runsOf(trigger.id)[0]).toMatchObject({ deliveryId: "temporary_failure" });
+    await triggers.pollOnce(undefined, 0);
+    expect(broker.harness.d1.rows("SELECT * FROM events WHERE acked_at IS NULL")).toHaveLength(0);
+    expect(runsOf(trigger.id)).toHaveLength(1);
   });
 
   it("dedupes a redelivered event: a crash after the run was saved starts no second run", async () => {

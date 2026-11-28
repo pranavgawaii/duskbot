@@ -218,7 +218,7 @@ public final class PhoneNotifications {
     private static JSONObject tapData(Map<String, String> data) {
         JSONObject dusk = new JSONObject();
         try {
-            for (String key : new String[] { "kind", "botId", "threadId", "id", "groupId", "requestId" }) {
+            for (String key : new String[] { "kind", "botId", "threadId", "environmentId", "id", "groupId", "requestId" }) {
                 if (notEmpty(data.get(key))) dusk.put(key, data.get(key));
             }
         } catch (org.json.JSONException ignored) {}

@@ -30,15 +30,16 @@ const optionalId = (value) => value === undefined || (typeof value === "string" 
 /** the message a workspace asks to push, or null; the bot's name is cut to what a lock screen shows */
 export function pushMessage(value) {
   if (!value || typeof value !== "object") return null;
-  const { id, kind, botId, threadId, groupId, requestId, sealed, badge } = value;
+  const { id, kind, botId, threadId, environmentId, groupId, requestId, sealed, badge } = value;
   if (![id, botId, threadId].every((one) => typeof one === "string" && ID.test(one)) || typeof kind !== "string" || !KIND.test(kind)) return null;
-  if (!optionalId(groupId) || !optionalId(requestId)) return null;
+  if (!optionalId(environmentId) || !optionalId(groupId) || !optionalId(requestId)) return null;
   if (sealed !== undefined && (typeof sealed !== "string" || !PREVIEW.test(sealed))) return null;
   if (badge !== undefined && !(Number.isSafeInteger(badge) && badge >= 0 && badge <= 9999)) return null;
   const botName = cleanName(value.botName);
   if (!botName) return null;
   return {
-    id, kind, botId, botName, threadId, ...(groupId !== undefined ? { groupId } : {}), ...(requestId !== undefined ? { requestId } : {}),
+    id, kind, botId, botName, threadId, ...(environmentId !== undefined ? { environmentId } : {}),
+    ...(groupId !== undefined ? { groupId } : {}), ...(requestId !== undefined ? { requestId } : {}),
     ...(sealed !== undefined ? { sealed } : {}), ...(badge !== undefined ? { badge } : {}),
   };
 }

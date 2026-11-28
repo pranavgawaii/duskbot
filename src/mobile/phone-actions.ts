@@ -30,8 +30,8 @@ export function phoneActionFrom(action: NativeAction): PhoneAction | null {
   const ids = idsOf(action.data);
   const threadId = id(ids.threadId);
   if (!threadId) return null;
-  const botId = id(ids.botId), groupId = id(ids.groupId), requestId = id(ids.requestId);
-  const target: MobileOpenTarget = { threadId, ...(botId ? { botId } : {}), ...(groupId ? { groupId } : {}) };
+  const botId = id(ids.botId), groupId = id(ids.groupId), requestId = id(ids.requestId), environmentId = id(ids.environmentId);
+  const target: MobileOpenTarget = { threadId, ...(botId ? { botId } : {}), ...(groupId ? { groupId } : {}), ...(environmentId ? { environmentId } : {}) };
   if (!botId && !groupId) return null;
   if ((action.actionId === PHONE_ACTION.approve || action.actionId === PHONE_ACTION.deny) && requestId) {
     return { kind: "decide", target, requestId, behavior: action.actionId === PHONE_ACTION.approve ? "allow" : "deny" };

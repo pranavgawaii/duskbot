@@ -4,7 +4,7 @@ import { connect, createServer, type ClientHttp2Session, type Http2Server, type 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { createPushSender, pushRelayBase, READ_KIND, RELAY_RECHECK_MS, RELAY_TIMEOUT_MS, SERVICE_TIMEOUT_MS, type PushMessage } from "./push.ts";
+import { apnsAlertBody, createPushSender, fcmMessage, pushRelayBase, READ_KIND, RELAY_RECHECK_MS, RELAY_TIMEOUT_MS, SERVICE_TIMEOUT_MS, type PushMessage } from "./push.ts";
 
 const ec = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
 const rsa = generateKeyPairSync("rsa", { modulusLength: 2048 });
@@ -17,6 +17,12 @@ let directory: string;
 let apnsEnv: NodeJS.ProcessEnv;
 let fcmEnv: NodeJS.ProcessEnv;
 const timestamp = 1_800_000_000_000;
+
+it("carries the source place in iPhone and Android notification data", () => {
+  const placed = { ...message, environmentId: "env-cloud" };
+  expect(apnsAlertBody(placed)).toMatchObject({ dusk: { environmentId: "env-cloud" } });
+  expect(fcmMessage({ service: "fcm", token: "fixture-token", draws: true }, placed)).toMatchObject({ data: { environmentId: "env-cloud" } });
+});
 
 beforeAll(() => {
   directory = mkdtempSync(join(tmpdir(), "dusk-push-"));

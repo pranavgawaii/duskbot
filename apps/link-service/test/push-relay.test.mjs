@@ -66,16 +66,17 @@ describe("push relay", () => {
   it("sends data only to an app that draws its own notification, with its sealed preview and count", async () => {
     await start(createPushRelay({ env: { DUSK_FCM_SERVICE_ACCOUNT_FILE: "/keys/account.json", DUSK_FCM_HOST: "https://fcm.example" }, fetch: fakeFetch(), readFile }));
     const sealed = "s".repeat(120);
-    expect(await (await post({ service: "fcm", token: "fixture-token", draws: true, message: { ...message, sealed, badge: 4 } })).json()).toEqual({ outcome: "sent" });
+    expect(await (await post({ service: "fcm", token: "fixture-token", draws: true, message: { ...message, environmentId: "env-cloud", sealed, badge: 4 } })).json()).toEqual({ outcome: "sent" });
     const sent = JSON.parse(calls.find((one) => one.url.startsWith("https://fcm.example")).body).message;
     expect(sent).toEqual({
       token: "fixture-token", android: { priority: "high", ttl: "2419200s" },
-      data: { dusk: "1", id: "n1", kind: "mention", botId: "b1", threadId: "t1", sealed, botName: "Nova", badge: "4" },
+      data: { dusk: "1", id: "n1", kind: "mention", botId: "b1", threadId: "t1", environmentId: "env-cloud", sealed, botName: "Nova", badge: "4" },
     });
     expect(await (await post({ service: "fcm", token: "fixture-token", draws: true, message: { ...message, kind: "read" } })).json()).toEqual({ outcome: "sent" });
     expect(JSON.parse(calls.filter((one) => one.url.startsWith("https://fcm.example")).at(-1).body).message.android).toEqual({ priority: "normal", ttl: "2419200s" });
     expect((await post({ service: "fcm", token: "fixture-token", message: { ...message, sealed: "not sealed!" } })).status).toBe(400);
     expect((await post({ service: "fcm", token: "fixture-token", message: { ...message, badge: -1 } })).status).toBe(400);
+    expect((await post({ service: "fcm", token: "fixture-token", message: { ...message, environmentId: "bad/place" } })).status).toBe(400);
   });
 
   it("sends an APNs alert to the sandbox when asked", async () => {
@@ -136,6 +137,7 @@ describe("push relay", () => {
   it("cleans the bot's name for a lock screen", () => {
     expect(pushMessage({ ...message, botName: ` ${"N".repeat(100)}\u0007 ` })?.botName).toBe("N".repeat(80));
     expect(pushMessage({ ...message, groupId: "g1" })).toEqual({ id: "n1", kind: "mention", botId: "b1", botName: "Nova", threadId: "t1", groupId: "g1" });
+    expect(pushMessage({ ...message, environmentId: "env-cloud" })).toMatchObject({ environmentId: "env-cloud" });
     expect(pushMessage({ ...message, threadId: "a/b" })).toBeNull();
   });
 

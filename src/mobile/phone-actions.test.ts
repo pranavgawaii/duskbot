@@ -14,6 +14,12 @@ describe("phone actions", () => {
     expect(phoneActionFrom({ actionId: "dusk.approve", data: { botId: "b1", threadId: "t1", requestId: "r2" } })).toMatchObject({ kind: "decide", requestId: "r2" });
   });
 
+  it("keeps the source place from Android and iPhone taps", () => {
+    const placed = { ...dusk.dusk, environmentId: "env-cloud" };
+    expect(phoneActionFrom({ actionId: "tap", data: placed })).toMatchObject({ target: { environmentId: "env-cloud" } });
+    expect(phoneActionFrom({ actionId: "tap", data: { dusk: placed } })).toMatchObject({ target: { environmentId: "env-cloud" } });
+  });
+
   it("opens the chat when the ask id is missing, for Answer, and for a plain tap", () => {
     expect(phoneActionFrom({ actionId: "dusk.approve", data: { dusk: { botId: "b1", threadId: "t1" } } })).toEqual({ kind: "open", target: { botId: "b1", threadId: "t1" } });
     expect(phoneActionFrom({ actionId: "dusk.answer", data: dusk })?.kind).toBe("open");

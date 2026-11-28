@@ -13,6 +13,7 @@ export interface PushMessage {
   botId: string;
   botName: string;
   threadId: string;
+  environmentId?: string;
   groupId?: string;
   /** an approval's or question's ask, so the notification's buttons answer that one */
   requestId?: string;
@@ -100,6 +101,7 @@ function jwt(header: object, claims: object, key: KeyObject): string {
 function messageData(message: PushMessage): Record<string, string> {
   return {
     kind: message.kind, botId: message.botId, threadId: message.threadId, id: message.id,
+    ...(message.environmentId !== undefined ? { environmentId: message.environmentId } : {}),
     ...(message.groupId !== undefined ? { groupId: message.groupId } : {}),
     ...(message.requestId !== undefined ? { requestId: message.requestId } : {}),
     ...(message.sealed !== undefined ? { sealed: message.sealed } : {}),

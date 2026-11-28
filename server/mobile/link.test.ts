@@ -286,7 +286,7 @@ describe("mobile link", () => {
     expect((await call(mobile, auth, "PUT", "/api/mobile/push", { service: "apns", token: "abcdef0123456789", environment: "sandbox" })).body).toEqual({ ok: true, delivering: true });
     await mobile.notify({ id: "n1", at: 1, read: false, kind: "mention", botId: "b1", botName: "Nova", threadId: "t1", title: "Nova", body: "secret text" });
     await vi.advanceTimersByTimeAsync(PUSH_GRACE_MS);
-    expect(sent).toEqual([{ target: { service: "apns", token: "abcdef0123456789", environment: "sandbox" }, message: { id: "n1", kind: "mention", title: "Nova", botId: "b1", botName: "Nova", threadId: "t1" } }]);
+    expect(sent).toEqual([{ target: { service: "apns", token: "abcdef0123456789", environment: "sandbox" }, message: { id: "n1", kind: "mention", title: "Nova", botId: "b1", botName: "Nova", threadId: "t1", environmentId: "env-1" } }]);
     await mobile.notify({ id: "n1", at: 1, read: false, kind: "mention", botId: "b1", botName: "Nova", threadId: "t1", title: "Nova", body: "again" });
     await vi.advanceTimersByTimeAsync(PUSH_GRACE_MS);
     expect(sent).toHaveLength(1);
@@ -309,7 +309,7 @@ describe("mobile link", () => {
     vi.useRealTimers();
     const [{ target, message }] = sent;
     expect(target).toEqual({ service: "fcm", token: "fcm-token-0123456789", draws: true });
-    expect(message).toMatchObject({ id: "n7", botName: "Nova", threadId: "t1", badge: 3 });
+    expect(message).toMatchObject({ id: "n7", botName: "Nova", threadId: "t1", environmentId: "env-1", badge: 3 });
     expect(JSON.stringify(message).includes("flights")).toBe(false);
     expect(openPreview(keys.privateKey, message.sealed!)).toBe("The flights are booked for Friday");
     unread = 0;

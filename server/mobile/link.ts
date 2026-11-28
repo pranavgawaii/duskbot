@@ -246,7 +246,8 @@ export function createMobileLink(deps: MobileLinkDeps) {
       try { sealed = sealToPhone(registration.previewKey, preview, PUSH_PREVIEW_SEAL); } catch { sealed = undefined; }
     }
     const badge = deps.unreadCount?.();
-    return { ...message, ...(sealed ? { sealed } : {}), ...(badge !== undefined ? { badge } : {}) };
+    const environmentId = deps.workspace().environmentId;
+    return { ...message, ...(environmentId ? { environmentId } : {}), ...(sealed ? { sealed } : {}), ...(badge !== undefined ? { badge } : {}) };
   }
 
   /** sends now; a push the service could not take goes again at 10 s, 60 s and 5 min while it is still news to the phone */

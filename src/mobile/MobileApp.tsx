@@ -258,7 +258,7 @@ function Shell() {
     return true;
   }), [platform, openTarget, dispatch]);
   useEffect(() => platform.onNotificationOpen?.(openTarget), [platform, openTarget]);
-  usePhoneActions(platform, state, dispatch, openTarget);
+  usePhoneActions(platform, state, dispatch, openTarget, { place, connections: places.connections, loaded: places.loaded, switchTo: places.switchTo });
   useShortcuts({ platform, state, dispatch, place, connections: places.connections, loaded: places.loaded, switchTo: places.switchTo, openChat });
 
   // registered once, so a layer that opens later (a full screen computer, adding a place) is asked before it
